@@ -6,10 +6,10 @@ import plotly.graph_objects as go
 import yfinance as yf
 from datetime import datetime
 
-# Configuração da página em modo expandido
+# Configuração da página e interface ampla
 st.set_page_config(page_title="QUANTUM | Wealth OS", layout="wide", page_icon="⚡")
 
-# --- CABEÇALHO LIMPO E INSTITUCIONAL ---
+# --- CABEÇALHO ---
 col_logo, col_status = st.columns([4, 1])
 with col_logo:
     st.title("⚡ QUANTUM // WEALTH INTELLIGENCE ENGINE")
@@ -68,7 +68,6 @@ aba_painel, aba_carteira, aba_stress, aba_roadmap = st.tabs([
 # ABA 1: TERMINAL DE PROJEÇÃO
 # ==========================================
 with aba_painel:
-    # Painel de métricas usando containers com bordas (estilo cards modernos)
     st.markdown("#### 🌐 MACRO DATA MONITOR")
     k1, k2, k3, k4 = st.columns(4)
     with k1:
@@ -114,7 +113,6 @@ with aba_painel:
     df_projeccao = pd.DataFrame(data_points)
     res_final = df_projeccao.iloc[-1]
     
-    # Exibição dos resultados finais em destaque
     st.markdown("#### 🎯 RESULTADO ESTIMADO DO MODELO")
     r1, r2, r3 = st.columns(3)
     with r1:
@@ -127,7 +125,6 @@ with aba_painel:
         with st.container(border=True):
             st.metric("Resultado Simulado em CDI", f"R$ {res_final['Cenário CDI']:,.2f}")
             
-    # Gráfico Futurista Plotly Neon
     st.markdown("<br>### 📈 Evolução Patrimonial Comparativa", unsafe_allowed_html=True)
     fig_neon = go.Figure()
     fig_neon.add_trace(go.Scatter(x=df_projeccao['Ano'], y=df_projeccao['Modelo Alvo'], name='QUANTUM ALGO', line=dict(color='#00E676', width=3.5)))
@@ -178,7 +175,6 @@ with aba_carteira:
         fig_rosca.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_rosca, use_container_width=True)
 
-    # Calculadora Integrada de Rebalanceamento Flash
     st.markdown("---")
     st.markdown("### ⚡ Ordem de Compra Mensal Otimizada")
     valor_aporte_rebalancear = st.number_input("Aporte Disponível Imediato (R$)", value=3000.0)
@@ -215,19 +211,19 @@ with aba_stress:
         with sd1: 
             with st.container(border=True):
                 st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
-        with sd2: st.error("⚠️ DIAGNÓSTICO: Alta exposição a ações causaria perda patrimonial temporária de ~22%. Suas posições em Ouro atuariam como colchão térmico limitando a queda.")
+        with sd2: st.error("⚠️ DIAGNÓSTRECO: Alta exposição a ações causaria perda patrimonial temporária de ~22%. Suas posições em Ouro atuariam como colchão térmico limitando a queda.")
     elif "2020" in crise:
         p_impactado = patrimonio_bruto * 0.88
         with sd1: 
             with st.container(border=True):
                 st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
-        with sd2: st.warning("⚠️ DIAGNÓSTICO: Queda rápida de liquidez geral. Recuperação estimada em V (menos de 10 meses). Aporte mensal continuado durante esse período geraria assimetria positiva brutal.")
+        with sd2: st.warning("⚠️ DIAGNÓSTRECO: Queda rápida de liquidez geral. Recuperação estimada em V (menos de 10 meses). Aporte mensal continuado durante esse período geraria assimetria positiva brutal.")
     else:
         p_impactado = patrimonio_bruto - (aporte_mensal * 36)
         with sd1: 
             with st.container(border=True):
                 st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", "ESTAGNAÇÃO")
-        with sd2: st.info("⚠️ DIAGNÓSTICO: Ausência de ganho real. O poder de compra é severamente corroído se a carteira não possuir ativos atrelados diretamente ao IPCA físico.")
+        with sd2: st.info("⚠️ DIAGNÓSTRECO: Ausência de ganho real. O poder de compra é severamente corroído se a carteira não possuir ativos atrelados diretamente ao IPCA físico.")
 
 # ==========================================
 # ABA 4: ROADMAP METAS 2040
@@ -254,11 +250,20 @@ with aba_roadmap:
     st.info(f"🔹 **Alvo 2 (Imóvel - R$ {v_imovel:,.2f}):** Atingível em aproximadamente **{formata_tempo(t_imovel)}**.")
     st.success(f"🏁 **Alvo Master (Viver de Renda Eterna - R$ {v_independencia:,.2f}):** Atingível em **{formata_tempo(t_indep)}** gerando uma retirada de R$ {custo_vida:,.2f}/mês.")
     
-    # Gráfico de barras horizontais das metas
+    # Gráfico de barras horizontais das metas (Corrigido e fechado sem quebras!)
     fig_metas = go.Figure(go.Bar(
         x=[v_casamento, v_imovel, v_independencia],
         y=['Casamento', 'Imóvel', 'Independência'],
         orientation='h',
         marker_color=['#00B0FF', '#FF9100', '#00E676']
     ))
-    fig_metas.update_layout(template="plotly_dark", title="Volume Financeiro por Meta Destinada", paper_bgcolor='rgba(0,
+    fig_metas.update_layout(
+        template="plotly_dark", 
+        title="Volume Financeiro por Meta Destinada", 
+        paper_bgcolor='rgba(0,0,0,0)', 
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    st.plotly_chart(fig_metas, use_container_width=True)
+
+st.markdown("---")
+st.caption("QUANTUM MATRIX WEALTH SYSTEM // DESENVOLVIDO PARA ANÁLISE PREDITIVA DE ALTA PERFORMANCE.")
