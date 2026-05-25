@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import go_objects as go  # Se der erro, use: import plotly.graph_objects as go
 import plotly.graph_objects as go
 import yfinance as yf
 
@@ -47,7 +46,7 @@ st.html(f"""
         }}
         
         /* Cores customizadas para os títulos e métricas (Estilo Neon) */
-        h1, h2, h3 {{
+        h1, h2, h3, h4 {{
             color: #ffffff !important;
             font-weight: 700 !important;
         }}
@@ -128,7 +127,7 @@ with aba_painel:
         st.markdown("#### 🌐 MACRO DATA MONITOR")
         
         with st.container(border=True):
-            st.metric("💵 Dólar Comercial (USD/BRL)", f"R$ {market['dolar']:.2f}", "FX REAL TIME", delta_color="normal")
+            st.metric("💵 Dólar Comercial (USD/BRL)", f"R$ {market['dolar']:.2f}", "FX REAL TIME")
             
         st.write("")
         with st.container(border=True):
