@@ -6,25 +6,10 @@ import plotly.graph_objects as go
 import yfinance as yf
 from datetime import datetime
 
-# Configuração da página e injeção de estilo Dark Futurista
+# Configuração da página em modo expandido
 st.set_page_config(page_title="QUANTUM | Wealth OS", layout="wide", page_icon="⚡")
 
-# Custom CSS para forçar elementos visuais com estética de terminal premium
-st.markdown("""
-    <style>
-    .reportview-container { background: #0E1117; }
-    .metric-card {
-        background-color: #1A1F2C;
-        border-left: 5px solid #00E676;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-    div[data-testid="stMetricValue"] { font-family: 'Courier New', monospace; font-weight: bold; color: #00E676; }
-    </style>
-""", unsafe_allowed_html=True)
-
-# --- CABEÇALHO ---
+# --- CABEÇALHO LIMPO E INSTITUCIONAL ---
 col_logo, col_status = st.columns([4, 1])
 with col_logo:
     st.title("⚡ QUANTUM // WEALTH INTELLIGENCE ENGINE")
@@ -40,13 +25,14 @@ def fetch_financial_metrics():
     try:
         # Dólar
         df_usd = yf.Ticker("BRL=X").history(period="1d")
-        if not df_usd.empty: market_data["dolar"] = df_usd['Close'].iloc[-1]
+        if not df_usd.empty: 
+            market_data["dolar"] = df_usd['Close'].iloc[-1]
         # Ouro
         df_gold = yf.Ticker("GC=F").history(period="1d")
         if not df_gold.empty:
             market_data["ouro_oz"] = df_gold['Close'].iloc[-1]
             market_data["ouro_g_brl"] = (market_data["ouro_oz"] * market_data["dolar"]) / 31.1035
-        # S&P 500 para termômetro global
+        # S&P 500
         df_sp = yf.Ticker("^GSPC").history(period="ytd")
         if len(df_sp) > 1:
             market_data["sp500_ytd"] = ((df_sp['Close'].iloc[-1] / df_sp['Close'].iloc[0]) - 1) * 100
@@ -82,12 +68,21 @@ aba_painel, aba_carteira, aba_stress, aba_roadmap = st.tabs([
 # ABA 1: TERMINAL DE PROJEÇÃO
 # ==========================================
 with aba_painel:
-    # Monitor de mercado estilo Bloomberg
+    # Painel de métricas usando containers com bordas (estilo cards modernos)
+    st.markdown("#### 🌐 MACRO DATA MONITOR")
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st.metric("💵 USD / BRL", f"R$ {market['dolar']:.2f}", "FX REAL TIME")
-    with k2: st.metric("🏆 GOLD (GRAMA)", f"R$ {market['ouro_g_brl']:.2f}", f"US$ {market['ouro_oz']:.1f} /oz")
-    with k3: st.metric("🏦 CDI ESTIMADO", f"{market['cdi']:.2f}% a.a.", "REF: SELIC")
-    with k4: st.metric("🌎 S&P 500 YTD", f"{market['sp500_ytd']:.2f}%", "GLOBAL INDEX")
+    with k1:
+        with st.container(border=True):
+            st.metric("💵 USD / BRL", f"R$ {market['dolar']:.2f}", "FX REAL TIME")
+    with k2:
+        with st.container(border=True):
+            st.metric("🏆 GOLD (GRAMA)", f"R$ {market['ouro_g_brl']:.2f}", f"US$ {market['ouro_oz']:.1f} /oz")
+    with k3:
+        with st.container(border=True):
+            st.metric("🏦 CDI ESTIMADO", f"{market['cdi']:.2f}% a.a.", "REF: SELIC")
+    with k4:
+        with st.container(border=True):
+            st.metric("🌎 S&P 500 YTD", f"{market['sp500_ytd']:.2f}%", "GLOBAL INDEX")
 
     st.markdown("---")
     
@@ -119,7 +114,21 @@ with aba_painel:
     df_projeccao = pd.DataFrame(data_points)
     res_final = df_projeccao.iloc[-1]
     
+    # Exibição dos resultados finais em destaque
+    st.markdown("#### 🎯 RESULTADO ESTIMADO DO MODELO")
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        with st.container(border=True):
+            st.metric("Capital Próprio Investido", f"R$ {res_final['Capital Próprio']:,.2f}")
+    with r2:
+        with st.container(border=True):
+            st.metric("Montante na Sua Estratégia", f"R$ {res_final['Modelo Alvo']:,.2f}")
+    with r3:
+        with st.container(border=True):
+            st.metric("Resultado Simulado em CDI", f"R$ {res_final['Cenário CDI']:,.2f}")
+            
     # Gráfico Futurista Plotly Neon
+    st.markdown("<br>### 📈 Evolução Patrimonial Comparativa", unsafe_allowed_html=True)
     fig_neon = go.Figure()
     fig_neon.add_trace(go.Scatter(x=df_projeccao['Ano'], y=df_projeccao['Modelo Alvo'], name='QUANTUM ALGO', line=dict(color='#00E676', width=3.5)))
     fig_neon.add_trace(go.Scatter(x=df_projeccao['Ano'], y=df_projeccao['Cenário CDI'], name='BENCHMARK CDI', line=dict(color='#00B0FF', width=2, dash='dot')))
@@ -202,16 +211,22 @@ with aba_stress:
     sd1, sd2 = st.columns(2)
     
     if "2008" in crise:
-        p_impactado = patrimonio_bruto * 0.78  # Impacto ponderado estimado da carteira
-        with sd1: st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
+        p_impactado = patrimonio_bruto * 0.78  
+        with sd1: 
+            with st.container(border=True):
+                st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
         with sd2: st.error("⚠️ DIAGNÓSTICO: Alta exposição a ações causaria perda patrimonial temporária de ~22%. Suas posições em Ouro atuariam como colchão térmico limitando a queda.")
     elif "2020" in crise:
         p_impactado = patrimonio_bruto * 0.88
-        with sd1: st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
+        with sd1: 
+            with st.container(border=True):
+                st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
         with sd2: st.warning("⚠️ DIAGNÓSTICO: Queda rápida de liquidez geral. Recuperação estimada em V (menos de 10 meses). Aporte mensal continuado durante esse período geraria assimetria positiva brutal.")
     else:
         p_impactado = patrimonio_bruto - (aporte_mensal * 36)
-        with sd1: st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", "ESTAGNAÇÃO")
+        with sd1: 
+            with st.container(border=True):
+                st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", "ESTAGNAÇÃO")
         with sd2: st.info("⚠️ DIAGNÓSTICO: Ausência de ganho real. O poder de compra é severamente corroído se a carteira não possuir ativos atrelados diretamente ao IPCA físico.")
 
 # ==========================================
@@ -223,12 +238,11 @@ with aba_roadmap:
     
     v_casamento = st.number_input("Meta Orçamentária 1: Casamento / Celebração (R$)", value=50000.0)
     v_imovel = st.number_input("Meta Orçamentária 2: Entrada Forte / Imóvel Próprio (R$)", value=250000.0)
-    v_independencia = (custo_vida * 12) / 0.04  # Regra dos 4% para viver de renda
+    v_independencia = (custo_vida * 12) / 0.04  
     
     st.markdown("---")
     st.markdown("### 🗺️ Linha do Tempo de Conquistas Calculadas")
     
-    # Busca na matriz gerada na Aba 1 os marcos temporais aproximados
     t_casamento = df_projeccao[df_projeccao["Modelo Alvo"] >= v_casamento]["Ano"].min()
     t_imovel = df_projeccao[df_projeccao["Modelo Alvo"] >= v_imovel]["Ano"].min()
     t_indep = df_projeccao[df_projeccao["Modelo Alvo"] >= v_independencia]["Ano"].min()
@@ -247,8 +261,4 @@ with aba_roadmap:
         orientation='h',
         marker_color=['#00B0FF', '#FF9100', '#00E676']
     ))
-    fig_metas.update_layout(template="plotly_dark", title="Volume Financeiro por Meta Destinada", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_metas, use_container_width=True)
-
-st.markdown("---")
-st.caption("QUANTUM MATRIX WEALTH SYSTEM // DESENVOLVIDO PARA ANÁLISE PREDITIVA DE ALTA PERFORMANCE.")
+    fig_metas.update_layout(template="plotly_dark", title="Volume Financeiro por Meta Destinada", paper_bgcolor='rgba(0,
