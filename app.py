@@ -6,232 +6,249 @@ import plotly.graph_objects as go
 import yfinance as yf
 from datetime import datetime
 
-# Configuração da página em modo Wide para melhor aproveitamento gráfico
-st.set_page_config(page_title="Planner Investments Pro", layout="wide", page_icon="💰")
+# Configuração da página e injeção de estilo Dark Futurista
+st.set_page_config(page_title="QUANTUM | Wealth OS", layout="wide", page_icon="⚡")
 
-st.title("💸 Planner Investments Pro — Simulador & Carteira Inteligente")
-st.write("Monitore ativos em tempo real, simule a evolução do seu patrimônio a longo prazo e gerencie o balanceamento da sua carteira.")
+# Custom CSS para forçar elementos visuais com estética de terminal premium
+st.markdown("""
+    <style>
+    .reportview-container { background: #0E1117; }
+    .metric-card {
+        background-color: #1A1F2C;
+        border-left: 5px solid #00E676;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    div[data-testid="stMetricValue"] { font-family: 'Courier New', monospace; font-weight: bold; color: #00E676; }
+    </style>
+""", unsafe_allowed_html=True)
 
-# --- FUNÇÃO PARA PEGAR DADOS EM TEMPO REAL ---
-@st.cache_data(ttl=3600)  # Guarda em cache por 1 hora para o app ficar rápido
-def buscar_dados_mercado():
-    dados = {"dolar": 5.15, "ouro_oz": 2350.0, "ouro_g_brl": 390.0, "cdi": 10.50}
+# --- CABEÇALHO ---
+col_logo, col_status = st.columns([4, 1])
+with col_logo:
+    st.title("⚡ QUANTUM // WEALTH INTELLIGENCE ENGINE")
+    st.caption("SISTEMA DE ANÁLISE MATRICIAL DE ATIVOS E PROJEÇÃO PATRIMONIAL")
+with col_status:
+    st.markdown("<br>", unsafe_allowed_html=True)
+    st.success("🟢 CORE ENGINE: ONLINE")
+
+# --- ENGINE DE DADOS (YFINANCE) ---
+@st.cache_data(ttl=1800)
+def fetch_financial_metrics():
+    market_data = {"dolar": 5.15, "ouro_oz": 2350.0, "ouro_g_brl": 390.0, "cdi": 10.50, "sp500_ytd": 8.5}
     try:
-        # Dólar Comercial (USD/BRL)
-        ticker_usd = yf.Ticker("BRL=X")
-        df_usd = ticker_usd.history(period="1d")
-        if not df_usd.empty:
-            dados["dolar"] = df_usd['Close'].iloc[-1]
-        
-        # Ouro em Onça Troy (USD)
-        ticker_gold = yf.Ticker("GC=F")
-        df_gold = ticker_gold.history(period="1d")
+        # Dólar
+        df_usd = yf.Ticker("BRL=X").history(period="1d")
+        if not df_usd.empty: market_data["dolar"] = df_usd['Close'].iloc[-1]
+        # Ouro
+        df_gold = yf.Ticker("GC=F").history(period="1d")
         if not df_gold.empty:
-            dados["ouro_oz"] = df_gold['Close'].iloc[-1]
-            
-        # Cálculo aproximado do grama do ouro em R$ (1 Oz ≈ 31.1035g)
-        dados["ouro_g_brl"] = (dados["ouro_oz"] * dados["dolar"]) / 31.1035
-    except Exception as e:
-        st.sidebar.warning(f"Erro ao atualizar cotações em tempo real: {e}. Usando dados padrão.")
-    return dados
+            market_data["ouro_oz"] = df_gold['Close'].iloc[-1]
+            market_data["ouro_g_brl"] = (market_data["ouro_oz"] * market_data["dolar"]) / 31.1035
+        # S&P 500 para termômetro global
+        df_sp = yf.Ticker("^GSPC").history(period="ytd")
+        if len(df_sp) > 1:
+            market_data["sp500_ytd"] = ((df_sp['Close'].iloc[-1] / df_sp['Close'].iloc[0]) - 1) * 100
+    except Exception:
+        pass
+    return market_data
 
-info_mercado = buscar_dados_mercado()
+market = fetch_financial_metrics()
 
-# --- SIDEBAR GLOBAL (PARÂMETROS DA SIMULAÇÃO) ---
+# --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
-    st.header("⚙️ Parâmetros Globais")
-    st.markdown("Ajuste as variáveis para simular o seu planejamento financeiro de longo prazo:")
-    
-    v_inicial = st.number_input("Aplicação Inicial (R$):", min_value=0.0, value=10000.0, step=1000.0)
-    aporte_mensal = st.number_input("Aporte Mensal Constante (R$):", min_value=0.0, value=1500.0, step=100.0)
-    anos = st.number_input("Tempo de Investimento (Anos):", min_value=1, max_value=50, value=15, step=1)
-    taxa_anual_estimada = st.number_input("Sua Taxa Rendimento Alvo (% ao ano):", min_value=0.0, value=12.0, step=0.5)
+    st.markdown("### 🎛️ TERMINAL DE ENTRADA")
+    st.markdown("---")
+    v_inicial = st.number_input("Aporte Inicial Semente (R$)", min_value=0.0, value=15000.0, step=1000.0)
+    aporte_mensal = st.number_input("Fluxo Mensal de Aporte (R$)", min_value=0.0, value=2000.0, step=100.0)
+    anos = st.slider("Horizonte Temporal (Anos)", min_value=1, max_value=40, value=15)
+    taxa_alvo = st.number_input("Taxa Alvo Estratégica (% a.a.)", min_value=0.0, value=13.0, step=0.5)
     
     st.markdown("---")
-    st.markdown("💡 *Dica: Use taxas reais se quiser descontar a inflação mentalmente, ou configure o simulador de IPCA na Aba 3.*")
+    st.markdown("### 🛡️ RISK MANAGEMENT")
+    perfil = st.selectbox("Perfil de Alocação Algorítmica", ["Conservador Defensivo", "Moderado Balanceado", "Agressivo Quantitativo"])
+    custo_vida = st.number_input("Custo de Vida Alvo Atual (R$)", value=7000.0)
 
-# --- CRIAÇÃO DAS ABAS ---
-aba1, aba2, aba3 = st.tabs(["📈 Simulador Avançado & Comparativo", "💼 Gestor de Carteira & Rebalanceamento", "🧠 Inteligência Financeira & IPCA"])
+# --- ABAS DE OPERAÇÃO ---
+aba_painel, aba_carteira, aba_stress, aba_roadmap = st.tabs([
+    "📈 TERMINAL DE PROJEÇÃO", 
+    "💼 MATRIX ASSET ALLOCATION", 
+    "🚨 STRESS TEST CRITICAL SCENARIOS",
+    "🗓️ ROADMAP METAS 2040"
+])
 
 # ==========================================
-# TAB 1: SIMULADOR AVANÇADO & COMPARATIVO
+# ABA 1: TERMINAL DE PROJEÇÃO
 # ==========================================
-with aba1:
-    st.subheader("📊 Painel Macroeconômico & Projeções")
-    
-    # Cards de Mercado em Tempo Real
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("💵 Dólar Comercial", f"R$ {info_mercado['dolar']:.2f}")
-    m2.metric("🏆 Ouro (Grama)", f"R$ {info_mercado['ouro_g_brl']:.2f}", f"US$ {info_mercado['ouro_oz']:.1f}/oz")
-    m3.metric("🏦 Taxa CDI Padrão", f"{info_mercado['cdi']:.2f}% a.a.")
-    m4.metric("🎯 Sua Meta de Retorno", f"{taxa_anual_estimada:.2f}% a.a.")
+with aba_painel:
+    # Monitor de mercado estilo Bloomberg
+    k1, k2, k3, k4 = st.columns(4)
+    with k1: st.metric("💵 USD / BRL", f"R$ {market['dolar']:.2f}", "FX REAL TIME")
+    with k2: st.metric("🏆 GOLD (GRAMA)", f"R$ {market['ouro_g_brl']:.2f}", f"US$ {market['ouro_oz']:.1f} /oz")
+    with k3: st.metric("🏦 CDI ESTIMADO", f"{market['cdi']:.2f}% a.a.", "REF: SELIC")
+    with k4: st.metric("🌎 S&P 500 YTD", f"{market['sp500_ytd']:.2f}%", "GLOBAL INDEX")
 
     st.markdown("---")
     
-    # Motor de Cálculo de Juros Compostos Mês a Mês
+    # Processamento Matricial de Juros
     meses = anos * 12
-    taxa_mensal_meta = (1 + taxa_anual_estimada/100)**(1/12) - 1
-    taxa_mensal_cdi = (1 + (info_mercado['cdi']/100))**(1/12) - 1
-    taxa_mensal_poupanca = (1 + 0.06)**(1/12) - 1 # Poupança estimada em ~6% a.a.
+    r_meta = (1 + taxa_alvo/100)**(1/12) - 1
+    r_cdi = (1 + market['cdi']/100)**(1/12) - 1
     
-    ev_mes = []
-    tot_investido = v_inicial
+    data_points = []
+    s_meta, s_cdi = v_inicial, v_inicial
+    c_proprio = v_inicial
     
-    # Valores iniciais
-    saldo_meta, saldo_cdi, saldo_poup = v_inicial, v_inicial, v_inicial
-    
-    for mes in range(1, meses + 1):
-        if mes > 1:
-            tot_investido += aporte_mensal
-            saldo_meta = (saldo_meta + aporte_mensal) * (1 + taxa_mensal_meta)
-            saldo_cdi = (saldo_cdi + aporte_mensal) * (1 + taxa_mensal_cdi)
-            saldo_poup = (saldo_poup + aporte_mensal) * (1 + taxa_mensal_poupanca)
+    for m in range(1, meses + 1):
+        if m > 1:
+            c_proprio += aporte_mensal
+            s_meta = (s_meta + aporte_mensal) * (1 + r_meta)
+            s_cdi = (s_cdi + aporte_mensal) * (1 + r_cdi)
         else:
-            saldo_meta *= (1 + taxa_mensal_meta)
-            saldo_cdi *= (1 + taxa_mensal_cdi)
-            saldo_poup *= (1 + taxa_mensal_poupanca)
+            s_meta *= (1 + r_meta)
+            s_cdi *= (1 + r_cdi)
             
-        ev_mes.append({
-            "Mês": mes,
-            "Ano": round(mes / 12, 1),
-            "Total Investido": tot_investido,
-            "Sua Estratégia": saldo_meta,
-            "100% do CDI": saldo_cdi,
-            "Poupança": saldo_poup
+        data_points.append({
+            "Ano": round(m / 12, 2),
+            "Capital Próprio": c_proprio,
+            "Modelo Alvo": s_meta,
+            "Cenário CDI": s_cdi
         })
         
-    df_evolucao = pd.DataFrame(ev_mes)
-    df_final = df_evolucao.iloc[-1]
+    df_projeccao = pd.DataFrame(data_points)
+    res_final = df_projeccao.iloc[-1]
     
-    # Resumo de Resultados em Cards Grandes
-    st.markdown("#### 🎯 Resultado Estimado ao Final do Período")
-    r1, r2, r3, r4 = st.columns(4)
-    r1.metric("💰 Capital Próprio Investido", f"R$ {df_final['Total Investido']:,.2f}")
-    r2.metric("🚀 Montante na Sua Estratégia", f"R$ {df_final['Sua Estratégia']:,.2f}", f"+R$ {df_final['Sua Estratégia'] - df_final['Total Investido']:,.2f} em juros")
-    r3.metric("🥈 Rendendo 100% CDI", f"R$ {df_final['100% do CDI']:,.2f}")
-    r4.metric("🥉 Se ficasse na Poupança", f"R$ {df_final['Poupança']:,.2f}")
-
-    # Gráfico de Linha Interativo com Plotly
-    st.markdown("### 📈 Evolução Patrimonial Comparativa ao Longo do Tempo")
-    fig_linha = go.Figure()
-    fig_linha.add_trace(go.Scatter(x=df_evolucao['Ano'], y=df_evolucao['Sua Estratégia'], name='Sua Estratégia', line=dict(color='#2ECC71', width=3)))
-    fig_linha.add_trace(go.Scatter(x=df_evolucao['Ano'], y=df_evolucao['100% do CDI'], name='100% do CDI', line=dict(color='#3498DB', width=2, dash='dash')))
-    fig_linha.add_trace(go.Scatter(x=df_evolucao['Ano'], y=df_evolucao['Poupança'], name='Poupança Tradicional', line=dict(color='#E74C3C', width=1.5)))
-    fig_linha.add_trace(go.Scatter(x=df_evolucao['Ano'], y=df_evolucao['Total Investido'], name='Apenas Aportes (Sem Juros)', line=dict(color='#95A5A6', width=2)))
+    # Gráfico Futurista Plotly Neon
+    fig_neon = go.Figure()
+    fig_neon.add_trace(go.Scatter(x=df_projeccao['Ano'], y=df_projeccao['Modelo Alvo'], name='QUANTUM ALGO', line=dict(color='#00E676', width=3.5)))
+    fig_neon.add_trace(go.Scatter(x=df_projeccao['Ano'], y=df_projeccao['Cenário CDI'], name='BENCHMARK CDI', line=dict(color='#00B0FF', width=2, dash='dot')))
+    fig_neon.add_trace(go.Scatter(x=df_projeccao['Ano'], y=df_projeccao['Capital Próprio'], name='CAPITAL SECO', line=dict(color='#757575', width=1.5)))
     
-    fig_linha.update_layout(
-        xaxis_title="Tempo de Acumulação (Anos)",
-        yaxis_title="Valor Acumulado (R$)",
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    fig_neon.update_layout(
+        template="plotly_dark",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(title="ANOS DE ACUMULAÇÃO", gridcolor='#21262D'),
+        yaxis=dict(title="VALOR ACUMULADO (R$)", gridcolor='#21262D'),
+        hovermode="x unified"
     )
-    st.plotly_chart(fig_linha, use_container_width=True)
+    st.plotly_chart(fig_neon, use_container_width=True)
 
 # ==========================================
-# TAB 2: GESTOR DE CARTEIRA & REBALANCEAMENTO
+# ABA 2: MATRIX ASSET ALLOCATION
 # ==========================================
-with aba2:
-    st.subheader("💼 Montagem e Balanceamento de Carteira Customizada")
-    st.write("Monte a distribuição ideal dos seus investimentos e calcule para onde direcionar novos aportes.")
+with aba_carteira:
+    st.subheader("💼 Engenharia de Alocação de Ativos")
     
-    # Inicialização do estado da carteira base padrão
-    if 'carteira_ativos' not in st.session_state:
-        st.session_state.carteira_ativos = pd.DataFrame([
-            {"Ativo/Classe": "Renda Fixa Pós-Fixada", "Meta (%)": 40.0, "Rendimento Esperado (% a.a.)": 10.5},
-            {"Ativo/Classe": "Fundos Imobiliários (FIIs)", "Meta (%)": 30.0, "Rendimento Esperado (% a.a.)": 11.5},
-            {"Ativo/Classe": "Ações e ETFs Globais", "Meta (%)": 20.0, "Rendimento Esperado (% a.a.)": 14.0},
-            {"Ativo/Classe": "Ouro e Proteções", "Meta (%)": 10.0, "Rendimento Esperado (% a.a.)": 8.0}
+    if 'carteira_dinamica' not in st.session_state:
+        st.session_state.carteira_dinamica = pd.DataFrame([
+            {"Classe Ativo": "Renda Fixa IPCA+", "Alocação (%)": 35.0, "Volatilidade Corrente": "Baixa"},
+            {"Classe Ativo": "FIIs de Tijolo", "Alocação (%)": 25.0, "Volatilidade Corrente": "Média"},
+            {"Classe Ativo": "Ações Nacionais", "Alocação (%)": 20.0, "Volatilidade Corrente": "Alta"},
+            {"Classe Ativo": "Ouro (Hedging)", "Alocação (%)": 10.0, "Volatilidade Corrente": "Baixa"},
+            {"Classe Ativo": "Ativos Internacionais (Dólar)", "Alocação (%)": 10.0, "Volatilidade Corrente": "Média"}
         ])
-
-    col_carteira, col_graf_pizza = st.columns([3, 2])
+        
+    c_grid, c_pizza = st.columns([3, 2])
     
-    with col_carteira:
-        st.markdown("#### 🛠️ Ajuste seus Ativos e Metas Percentuais")
-        st.info("Você pode clicar diretamente na tabela abaixo para alterar os nomes, adicionar linhas ou mudar as porcentagens:")
+    with c_grid:
+        st.markdown("#### Tabela de Pesos Estratégicos")
+        carteira_user = st.data_editor(st.session_state.carteira_dinamica, num_rows="dynamic", use_container_width=True)
+        st.session_state.carteira_dinamica = carteira_user
         
-        # O Editor de Dados permite que o usuário adicione e remova linhas dinamicamente na tela
-        carteira_editada = st.data_editor(
-            st.session_state.carteira_ativos, 
-            num_rows="dynamic",
-            use_container_width=True,
-            key="editor_carteira"
-        )
-        st.session_state.carteira_ativos = carteira_editada
-
-        total_porcentagem = carteira_editada["Meta (%)"].sum() if "Meta (%)" in carteira_editada.columns else 0
-        
-        if total_porcentagem == 100.0:
-            st.success(f"✅ Distribuição Perfeita! Total Alocado: {total_porcentagem:.1f}%")
+        soma_meta = carteira_user["Alocação (%)"].sum() if "Alocação (%)" in carteira_user.columns else 0
+        if soma_meta == 100:
+            st.success("🎯 MATRIX INTEGRADA: BALANCEAMENTO EQUILIBRADO (100%)")
         else:
-            st.danger(f"⚠️ Atenção: A soma das metas está em **{total_porcentagem:.1f}%**. Reajuste os valores para fechar exatamente em **100%**.")
+            st.warning(f"❌ CONFLITO DE VETOR: Soma atual em {soma_meta:.1f}%. Ajuste para fechar em 100%.")
+            
+    with c_pizza:
+        st.markdown("#### Escopo Visual da Carteira")
+        fig_rosca = px.pie(carteira_user, values="Alocação (%)", names="Classe Ativo", hole=0.5, template="plotly_dark")
+        fig_rosca.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_rosca, use_container_width=True)
 
-    with col_graf_pizza:
-        st.markdown("#### 🍰 Divisão Visual da sua Carteira")
-        if total_porcentagem > 0:
-            fig_pizza = px.pie(
-                carteira_editada, 
-                values="Meta (%)", 
-                names="Ativo/Classe", 
-                hole=0.4,
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_pizza.update_layout(showlegend=True, legend=dict(orientation="h", y=-0.1))
-            st.plotly_chart(fig_pizza, use_container_width=True)
-        else:
-            st.write("Insira ativos na tabela para gerar o gráfico.")
-
+    # Calculadora Integrada de Rebalanceamento Flash
     st.markdown("---")
-    st.markdown("### 🧮 Calculadora de Aportes Direcionados")
-    st.write("Digite o valor que você tem disponível para investir *hoje*. O sistema distribuirá o dinheiro seguindo estritamente as suas metas percentuais:")
+    st.markdown("### ⚡ Ordem de Compra Mensal Otimizada")
+    valor_aporte_rebalancear = st.number_input("Aporte Disponível Imediato (R$)", value=3000.0)
     
-    v_aporte_hoje = st.number_input("Valor do Aporte Mensal de Hoje (R$):", min_value=0.0, value=2000.0, step=500.0)
+    if soma_meta == 100 and valor_aporte_rebalancear > 0:
+        df_ordens = carteira_user.copy()
+        df_ordens["Boleta de Compra"] = (df_ordens["Alocação (%)"] / 100) * valor_aporte_rebalancear
+        df_ordens["Boleta de Compra"] = df_ordens["Boleta de Compra"].map("R$ {:,.2f}".format)
+        st.dataframe(df_ordens[["Classe Ativo", "Alocação (%)", "Boleta de Compra"]], use_container_width=True)
+
+# ==========================================
+# ABA 3: STRESS TEST CRITICAL SCENARIOS
+# ==========================================
+with aba_stress:
+    st.subheader("🚨 Simulação de Choque de Mercado (Stress Testing)")
+    st.write("Avalie o comportamento simulado do seu patrimônio final estimado se uma grande crise histórica ocorresse imediatamente no término da sua meta:")
     
-    if total_porcentagem == 100.0 and v_aporte_hoje > 0:
-        df_aportes = carteira_editada.copy()
-        df_aportes["Quanto aplicar hoje (R$)"] = (df_aportes["Meta (%)"] / 100) * v_aporte_hoje
-        
-        # Formatação cosmética para exibição organizada
-        df_exibicao = df_aportes.copy()
-        df_exibicao["Meta (%)"] = df_exibicao["Meta (%)"].map("{:.1f}%".format)
-        df_exibicao["Quanto aplicar hoje (R$)"] = df_exibicao["Quanto aplicar hoje (R$)"].map("R$ {:,.2f}".format)
-        
-        st.table(df_exibicao[["Ativo/Classe", "Meta (%)", "Quanto aplicar hoje (R$)"]])
+    crise = st.radio(
+        "Selecione o Evento Macroeconômico Histórico para Choque:",
+        ["Subprime Crash 2008 (-35% na Renda Variável, +40% no Ouro)", 
+         "Pandemia Coronavírus 2020 (-25% geral, Dólar +15%)", 
+         "Cenário de Estagflação Severa (Retorno Real reduzido a zero por 3 anos)"]
+    )
+    
+    patrimonio_bruto = res_final["Modelo Alvo"]
+    
+    st.markdown("---")
+    st.markdown("#### Relatório de Danos e Impacto em Painel")
+    
+    sd1, sd2 = st.columns(2)
+    
+    if "2008" in crise:
+        p_impactado = patrimonio_bruto * 0.78  # Impacto ponderado estimado da carteira
+        with sd1: st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
+        with sd2: st.error("⚠️ DIAGNÓSTICO: Alta exposição a ações causaria perda patrimonial temporária de ~22%. Suas posições em Ouro atuariam como colchão térmico limitando a queda.")
+    elif "2020" in crise:
+        p_impactado = patrimonio_bruto * 0.88
+        with sd1: st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", f"-R$ {patrimonio_bruto - p_impactado:,.2f}")
+        with sd2: st.warning("⚠️ DIAGNÓSTICO: Queda rápida de liquidez geral. Recuperação estimada em V (menos de 10 meses). Aporte mensal continuado durante esse período geraria assimetria positiva brutal.")
     else:
-        st.caption("Ajuste a tabela acima para totalizar 100% para liberar o cálculo de aportes.")
+        p_impactado = patrimonio_bruto - (aporte_mensal * 36)
+        with sd1: st.metric("Patrimônio Pós-Crise", f"R$ {p_impactado:,.2f}", "ESTAGNAÇÃO")
+        with sd2: st.info("⚠️ DIAGNÓSTICO: Ausência de ganho real. O poder de compra é severamente corroído se a carteira não possuir ativos atrelados diretamente ao IPCA físico.")
 
 # ==========================================
-# TAB 3: INTELIGÊNCIA FINANCEIRA & IPCA
+# ABA 4: ROADMAP METAS 2040
 # ==========================================
-with aba3:
-    st.subheader("🧠 Ferramentas Avançadas de Simulação Humana")
+with aba_roadmap:
+    st.subheader("🗓️ Planejamento Temporal Estruturado (Alvos de Vida)")
+    st.write("Cronograma automatizado calculando o tempo exato para atingir seus grandes marcos de investimento:")
     
-    c1, c2 = st.columns(2)
+    v_casamento = st.number_input("Meta Orçamentária 1: Casamento / Celebração (R$)", value=50000.0)
+    v_imovel = st.number_input("Meta Orçamentária 2: Entrada Forte / Imóvel Próprio (R$)", value=250000.0)
+    v_independencia = (custo_vida * 12) / 0.04  # Regra dos 4% para viver de renda
     
-    with c1:
-        st.markdown("#### 📉 Impacto Real da Inflação (IPCA)")
-        st.write("O dinheiro perde valor no tempo. Insira a inflação média anual projetada para descobrir o poder de compra real do seu montante final:")
-        
-        inflacao_anual = st.number_input("Projeção de Inflação Média (% ao ano):", min_value=0.0, value=4.5, step=0.1)
-        
-        # Desconto do poder de compra real pela fórmula clássica: Montante / (1 + i)^n
-        valor_nominal_final = df_final['Sua Estratégia']
-        poder_compra_real = valor_nominal_final / ((1 + (inflacao_anual / 100)) ** anos)
-        
-        st.metric("💰 Poder de Compra Corrigido", f"R$ {poder_compra_real:,.2f}")
-        st.info(f"Devido à inflação acumulada de {inflacao_anual}% a.a., os R$ {valor_nominal_final:,.2f} acumulados em {anos} anos equivalerão a R$ {poder_compra_real:,.2f} em dinheiro de hoje.")
-        
-    with c2:
-        st.markdown("#### 🏝️ Calculadora de Independência (Regra dos 4%)")
-        st.write("Quantos reais você precisaria ter investidos em uma carteira sólida para cobrir seus gastos para sempre e viver de renda passiva?")
-        
-        custo_vida_mensal = st.number_input("Custo de Vida Mensal Alvo (R$):", min_value=0.0, value=8000.0, step=500.0)
-        
-        # Regra clássica dos 4% (Gasto Anual / 0.04)
-        patrimonio_necessario = (custo_vida_mensal * 12) / 0.04
-        
-        st.metric("🎯 Seu Número de Liberdade Financeira", f"R$ {patrimonio_necessario:,.2f}")
-        st.success(f"Acumulando R$ {patrimonio_necessario:,.2f}, você pode retirar R$ {custo_vida_mensal:,.2f} todos os meses (corrigidos pela inflação), sem que o seu dinheiro acabe.")
+    st.markdown("---")
+    st.markdown("### 🗺️ Linha do Tempo de Conquistas Calculadas")
+    
+    # Busca na matriz gerada na Aba 1 os marcos temporais aproximados
+    t_casamento = df_projeccao[df_projeccao["Modelo Alvo"] >= v_casamento]["Ano"].min()
+    t_imovel = df_projeccao[df_projeccao["Modelo Alvo"] >= v_imovel]["Ano"].min()
+    t_indep = df_projeccao[df_projeccao["Modelo Alvo"] >= v_independencia]["Ano"].min()
+    
+    def formata_tempo(t):
+        return f"{t:.1f} Anos" if not np.isnan(t) else "Acima do horizonte atual"
 
-# Rodapé de assinatura simples
+    st.info(f"🔹 **Alvo 1 (Casamento - R$ {v_casamento:,.2f}):** Atingível em aproximadamente **{formata_tempo(t_casamento)}**.")
+    st.info(f"🔹 **Alvo 2 (Imóvel - R$ {v_imovel:,.2f}):** Atingível em aproximadamente **{formata_tempo(t_imovel)}**.")
+    st.success(f"🏁 **Alvo Master (Viver de Renda Eterna - R$ {v_independencia:,.2f}):** Atingível em **{formata_tempo(t_indep)}** gerando uma retirada de R$ {custo_vida:,.2f}/mês.")
+    
+    # Gráfico de barras horizontais das metas
+    fig_metas = go.Figure(go.Bar(
+        x=[v_casamento, v_imovel, v_independencia],
+        y=['Casamento', 'Imóvel', 'Independência'],
+        orientation='h',
+        marker_color=['#00B0FF', '#FF9100', '#00E676']
+    ))
+    fig_metas.update_layout(template="plotly_dark", title="Volume Financeiro por Meta Destinada", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_metas, use_container_width=True)
+
 st.markdown("---")
-st.caption(f"Planner Investments Pro — Atualizado automaticamente via cotações públicas do Yahoo Finance em {datetime.now().strftime('%d/%m/%Y')}.")
+st.caption("QUANTUM MATRIX WEALTH SYSTEM // DESENVOLVIDO PARA ANÁLISE PREDITIVA DE ALTA PERFORMANCE.")
